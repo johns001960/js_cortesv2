@@ -72,6 +72,7 @@ def init_db():
             PRIMARY KEY(block_date, block_time))"""
     ]
     with db() as con:
+            cur = con.cursor()
         for command in commands:
             con.execute(command)
         if not con.execute("SELECT id FROM admins LIMIT 1").fetchone():
@@ -79,11 +80,11 @@ def init_db():
             con.execute("INSERT INTO admins(username,password_hash) VALUES(%s,%s)",
                         ("admin", generate_password_hash(initial_password)))
         if not con.execute("SELECT id FROM services LIMIT 1").fetchone():
-            con.executemany("INSERT INTO services(name,price) VALUES(%s,%s)", [
+            cur.executemany("INSERT INTO services(name,price) VALUES(%s,%s)", [
                 ("Corte de cabelo", 30), ("Barba", 20), ("Sobrancelha", 10),
                 ("Pigmentação", 25), ("Corte + barba", 45)])
         if not con.execute("SELECT time FROM schedule_slots LIMIT 1").fetchone():
-            con.executemany("INSERT INTO schedule_slots(time) VALUES(%s) ON CONFLICT DO NOTHING",
+            cur.executemany("INSERT INTO schedule_slots(time) VALUES(%s) ON CONFLICT DO NOTHING",
                             [(slot,) for slot in DEFAULT_SLOTS])
 
 
