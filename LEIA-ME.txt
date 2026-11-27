@@ -1,0 +1,39 @@
+JS CORTES — SISTEMA DE AGENDAMENTO (POSTGRESQL / NEON)
+
+ARQUIVOS
+- app.py: aplicação Flask conectada ao PostgreSQL do Neon.
+- requirements.txt: dependências para instalação no Render.
+- templates/: páginas do cliente e painel administrativo.
+- static/: estilos do site.
+
+CONFIGURAÇÃO NO RENDER
+Configure estas variáveis de ambiente:
+- DATABASE_URL: URL PostgreSQL do Neon (use a URL de conexão apropriada para sua aplicação).
+- SECRET_KEY: chave secreta longa e aleatória.
+- INITIAL_ADMIN_PASSWORD: senha inicial do administrador (mínimo recomendado de 10 caracteres).
+- TELEGRAM_TOKEN: token novo do bot (opcional).
+- TELEGRAM_CHAT_ID: ID do chat do Telegram (opcional).
+
+Comando de inicialização:
+gunicorn app:app
+
+Na primeira inicialização, o sistema cria as tabelas e os horários padrão caso ainda não existam.
+Usuário administrativo inicial: admin
+Senha inicial: valor de INITIAL_ADMIN_PASSWORD; se não for configurado, o sistema usa troque123.
+Altere a senha no painel assim que entrar.
+
+FUNCIONALIDADES ADICIONADAS
+- Aba Histórico: mostra inicialmente os 3 registros mais recentes, com opção de ver o histórico completo; mantém filtro por mês, exclusão individual e exclusão em lote do mês ou de todo o histórico.
+- Telefone obrigatório no agendamento: o formulário exige o número e o servidor rejeita envio sem telefone ou com menos de 10 dígitos.
+- Filtros de agendamentos por mês, data e status.
+- Preenchimento automático do preço do serviço ao concluir um atendimento quando o valor estiver zerado.
+- Link clicável para abrir conversa no WhatsApp do cliente (o telefone deve conter DDD).
+- Serviços: editar nome/preço, ativar, desativar e apagar (o apagamento é impedido quando há agendamentos vinculados, para preservar o histórico).
+- Aba Calendário: adicionar/remover horários; bloquear/desbloquear permanentemente dias da semana; bloquear datas específicas; bloquear vários dias da semana e/ou horários por quantidade de semanas.
+- Horários e dias bloqueados deixam de aparecer como disponíveis para os clientes.
+
+OBSERVAÇÕES IMPORTANTES
+- Este pacote usa PostgreSQL/Neon; não usa mais SQLite.
+- A estrutura cria tabelas novas de calendário automaticamente, mas não transfere os agendamentos antigos que estejam apenas no arquivo js_cortes.db.
+- Se você já tinha dados no Neon, o sistema mantém as tabelas e os registros existentes. Faça backup antes de usar opções de apagar histórico.
+- Revogue o token antigo do Telegram que estava exposto no código e cadastre um token novo em TELEGRAM_TOKEN.
