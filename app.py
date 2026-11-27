@@ -227,7 +227,7 @@ def dashboard():
     query = """SELECT a.*, s.name AS service_name, s.price AS service_price
                FROM appointments a JOIN services s ON s.id=a.service_id WHERE 1=1"""
     params = []
-        if not status_filter:
+    if not status_filter:
         query += " AND a.status NOT IN ('Concluído', 'Cancelado')"
     if month_filter and re.fullmatch(r"\d{4}-\d{2}", month_filter):
         query += " AND substring(a.appointment_date,1,7)=%s"
