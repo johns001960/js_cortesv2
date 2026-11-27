@@ -72,7 +72,7 @@ def init_db():
             PRIMARY KEY(block_date, block_time))"""
     ]
     with db() as con:
-            cur = con.cursor()
+        cur = con.cursor()
         for command in commands:
             con.execute(command)
         if not con.execute("SELECT id FROM admins LIMIT 1").fetchone():
