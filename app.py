@@ -651,10 +651,10 @@ def calendar():
                     )
                     flash("Horário adicionado à agenda.")
                 elif action == "toggle_slot":
-        slot = request.form.get("time", "")
-        con.execute("ALTER TABLE schedule_slots ADD COLUMN IF NOT EXISTS active BOOLEAN DEFAULT TRUE")
-        con.execute("UPDATE schedule_slots SET active = NOT COALESCE(active, TRUE) WHERE time=%s", (slot,))
-        flash("Horário atualizado!", "ok")
+    slot = request.form.get("time", "")
+    con.execute("ALTER TABLE schedule_slots ADD COLUMN IF NOT EXISTS active BOOLEAN DEFAULT TRUE")
+    con.execute("UPDATE schedule_slots SET active = NOT COALESCE(active, TRUE) WHERE time=%s", (slot,))
+    flash("Horário atualizado!", "ok")
     elif action == "remove_slot":
         slot = request.form.get("time", "")
         con.execute("DELETE FROM schedule_slots WHERE time=%s", (slot,))
