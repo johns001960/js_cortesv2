@@ -657,11 +657,11 @@ def calendar():
                 flash(f"Horário {slot} atualizado!")
         
             elif action == "remove_slot":
-        slot = request.form.get("time", "")
-        con.execute("DELETE FROM schedule_slots WHERE time=%s", (slot,))
-        flash(
-            "Horário removido da lista de horários disponíveis. Agendamentos existentes são preservados."
-        )
+                slot = request.form.get("time", "")
+                con.execute("DELETE FROM schedule_slots WHERE time=%s", (slot,))
+                flash(
+                    "Horário removido da lista de horários disponíveis. Agendamentos existentes são preservados."
+                )
             elif action == "toggle_weekday":
                 try:
                     weekday = int(request.form.get("weekday", "-1"))
