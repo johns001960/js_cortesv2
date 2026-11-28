@@ -485,9 +485,9 @@ def calendar():
                 slot = request.form.get("time", "")
                 con.execute("DELETE FROM schedule_slots WHERE time=%s", (slot,))
                 flash("Horário removido da lista de horários disponíveis. Agendamentos existentes são preservados.")
-                elif action == "toggle_slot":
-        slot = request.form.get("slot")
-        if not valid_time(slot):
+            elif action == "toggle_slot":
+              slot = request.form.get("slot")
+              if not valid_time(slot):
             flash("Horário inválido.", "danger")
         else:
             con.execute("CREATE TABLE IF NOT EXISTS disabled_slots (slot TEXT PRIMARY KEY)")
