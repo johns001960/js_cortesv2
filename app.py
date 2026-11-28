@@ -12,24 +12,49 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
-app.secret_key = os.environ.get("SECRET_KEY") or "chave-temporaria-apenas-para-desenvolvimento"
+app.secret_key = (
+    os.environ.get("SECRET_KEY") or "chave-temporaria-apenas-para-desenvolvimento"
+)
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
 
 DEFAULT_SLOTS = [
-    "08:00", "08:30", "09:00", "09:30", "10:00", "10:30",
-    "11:00", "13:00", "13:30", "14:00", "14:30", "15:00",
-    "15:30", "16:00", "16:30", "17:00", "17:30"
+    "08:00",
+    "08:30",
+    "09:00",
+    "09:30",
+    "10:00",
+    "10:30",
+    "11:00",
+    "13:00",
+    "13:30",
+    "14:00",
+    "14:30",
+    "15:00",
+    "15:30",
+    "16:00",
+    "16:30",
+    "17:00",
+    "17:30",
 ]
-WEEKDAYS = ["Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira",
-            "Sexta-feira", "Sábado", "Domingo"]
+WEEKDAYS = [
+    "Segunda-feira",
+    "Terça-feira",
+    "Quarta-feira",
+    "Quinta-feira",
+    "Sexta-feira",
+    "Sábado",
+    "Domingo",
+]
 
 
 @contextmanager
 def db():
     if not DATABASE_URL:
-        raise RuntimeError("Configure DATABASE_URL nas variáveis de ambiente do Render.")
+        raise RuntimeError(
+            "Configure DATABASE_URL nas variáveis de ambiente do Render."
+        )
     with psycopg.connect(DATABASE_URL, row_factory=dict_row) as con:
         yield con
 
@@ -39,7 +64,9 @@ def enviar_telegram(mensagem):
         return
     try:
         url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-        requests.post(url, json={"chat_id": TELEGRAM_CHAT_ID, "text": mensagem}, timeout=10).raise_for_status()
+        requests.post(
+            url, json={"chat_id": TELEGRAM_CHAT_ID, "text": mensagem}, timeout=10
+        ).raise_for_status()
     except Exception as exc:
         print("ERRO TELEGRAM:", exc)
 
@@ -69,22 +96,33 @@ def init_db():
             weekday INTEGER PRIMARY KEY CHECK (weekday BETWEEN 0 AND 6))""",
         """CREATE TABLE IF NOT EXISTS date_blocks (
             block_date TEXT NOT NULL, block_time TEXT NOT NULL DEFAULT '',
-            PRIMARY KEY(block_date, block_time))"""
+            PRIMARY KEY(block_date, block_time))""",
     ]
     with db() as con:
         for command in commands:
             con.execute(command)
         if not con.execute("SELECT id FROM admins LIMIT 1").fetchone():
             initial_password = os.environ.get("INITIAL_ADMIN_PASSWORD", "troque123")
-            con.execute("INSERT INTO admins(username,password_hash) VALUES(%s,%s)",
-                        ("admin", generate_password_hash(initial_password)))
+            con.execute(
+                "INSERT INTO admins(username,password_hash) VALUES(%s,%s)",
+                ("admin", generate_password_hash(initial_password)),
+            )
         if not con.execute("SELECT id FROM services LIMIT 1").fetchone():
-            con.executemany("INSERT INTO services(name,price) VALUES(%s,%s)", [
-                ("Corte de cabelo", 30), ("Barba", 20), ("Sobrancelha", 10),
-                ("Pigmentação", 25), ("Corte + barba", 45)])
+            con.executemany(
+                "INSERT INTO services(name,price) VALUES(%s,%s)",
+                [
+                    ("Corte de cabelo", 30),
+                    ("Barba", 20),
+                    ("Sobrancelha", 10),
+                    ("Pigmentação", 25),
+                    ("Corte + barba", 45),
+                ],
+            )
         if not con.execute("SELECT time FROM schedule_slots LIMIT 1").fetchone():
-            con.executemany("INSERT INTO schedule_slots(time) VALUES(%s) ON CONFLICT DO NOTHING",
-                            [(slot,) for slot in DEFAULT_SLOTS])
+            con.executemany(
+                "INSERT INTO schedule_slots(time) VALUES(%s) ON CONFLICT DO NOTHING",
+                [(slot,) for slot in DEFAULT_SLOTS],
+            )
 
 
 def admin_required(fn):
@@ -93,6 +131,7 @@ def admin_required(fn):
         if not session.get("admin_id"):
             return redirect(url_for("login"))
         return fn(*args, **kwargs)
+
     return wrapper
 
 
@@ -114,12 +153,22 @@ def valid_time(value):
 
 def blocked(con, day, time=None):
     d = date.fromisoformat(day)
-    if con.execute("SELECT weekday FROM recurring_day_blocks WHERE weekday=%s", (d.weekday(),)).fetchone():
+    if con.execute(
+        "SELECT weekday FROM recurring_day_blocks WHERE weekday=%s", (d.weekday(),)
+    ).fetchone():
         return True
-    if con.execute("SELECT block_date FROM date_blocks WHERE block_date=%s AND block_time=''", (day,)).fetchone():
+    if con.execute(
+        "SELECT block_date FROM date_blocks WHERE block_date=%s AND block_time=''",
+        (day,),
+    ).fetchone():
         return True
-    if time and con.execute("SELECT block_date FROM date_blocks WHERE block_date=%s AND block_time=%s",
-                            (day, time)).fetchone():
+    if (
+        time
+        and con.execute(
+            "SELECT block_date FROM date_blocks WHERE block_date=%s AND block_time=%s",
+            (day, time),
+        ).fetchone()
+    ):
         return True
     return False
 
@@ -134,8 +183,12 @@ def phone_whatsapp(phone):
 @app.route("/")
 def home():
     with db() as con:
-        services = con.execute("SELECT * FROM services WHERE active=1 ORDER BY name").fetchall()
-    return render_template("booking.html", services=services, today=date.today().isoformat())
+        services = con.execute(
+            "SELECT * FROM services WHERE active=1 ORDER BY name"
+        ).fetchall()
+    return render_template(
+        "booking.html", services=services, today=date.today().isoformat()
+    )
 
 
 @app.route("/horarios")
@@ -146,18 +199,34 @@ def available_times():
     with db() as con:
         if blocked(con, day):
             return {"times": [], "blocked": True}
-        booked = con.execute("""SELECT appointment_time FROM appointments
-            WHERE appointment_date=%s AND status != 'Cancelado'""", (day,)).fetchall()
-        date_specific = con.execute("""SELECT block_time FROM date_blocks
-            WHERE block_date=%s AND block_time != ''""", (day,)).fetchall()
-        recurring = con.execute("SELECT weekday FROM recurring_day_blocks WHERE weekday=%s",
-                                (date.fromisoformat(day).weekday(),)).fetchone()
-        slots = [r["time"] for r in con.execute("SELECT time FROM schedule_slots ORDER BY time").fetchall()]
+        booked = con.execute(
+            """SELECT appointment_time FROM appointments
+            WHERE appointment_date=%s AND status != 'Cancelado'""",
+            (day,),
+        ).fetchall()
+        date_specific = con.execute(
+            """SELECT block_time FROM date_blocks
+            WHERE block_date=%s AND block_time != ''""",
+            (day,),
+        ).fetchall()
+        recurring = con.execute(
+            "SELECT weekday FROM recurring_day_blocks WHERE weekday=%s",
+            (date.fromisoformat(day).weekday(),),
+        ).fetchone()
+        slots = [
+            r["time"]
+            for r in con.execute(
+                "SELECT time FROM schedule_slots ORDER BY time"
+            ).fetchall()
+        ]
     occupied = {r["appointment_time"] for r in booked}
     blocked_times = {r["block_time"] for r in date_specific}
     if recurring:
         return {"times": [], "blocked": True}
-    return {"times": [t for t in slots if t not in occupied and t not in blocked_times], "blocked": False}
+    return {
+        "times": [t for t in slots if t not in occupied and t not in blocked_times],
+        "blocked": False,
+    }
 
 
 @app.route("/agendar", methods=["POST"])
@@ -169,7 +238,14 @@ def book():
     time = request.form.get("appointment_time", "")
     payment_method = request.form.get("payment_method", "").strip()
     phone_digits = re.sub(r"\D", "", phone)
-    if not name or not phone or len(phone_digits) < 10 or not service_id or not day or not time:
+    if (
+        not name
+        or not phone
+        or len(phone_digits) < 10
+        or not service_id
+        or not day
+        or not time
+    ):
         flash("Preencha nome, telefone válido, serviço, data e horário.")
         return redirect(url_for("home"))
     if not valid_date(day) or not valid_time(time):
@@ -177,21 +253,35 @@ def book():
         return redirect(url_for("home"))
     try:
         with db() as con:
-            service = con.execute("SELECT id, name, price FROM services WHERE id=%s AND active=1",
-                                  (service_id,)).fetchone()
+            service = con.execute(
+                "SELECT id, name, price FROM services WHERE id=%s AND active=1",
+                (service_id,),
+            ).fetchone()
             if not service:
                 flash("Serviço inválido.")
                 return redirect(url_for("home"))
             if blocked(con, day, time):
                 flash("Esse dia ou horário está bloqueado. Escolha outro.")
                 return redirect(url_for("home"))
-            con.execute("""INSERT INTO appointments(customer_name,phone,service_id,appointment_date,
+            con.execute(
+                """INSERT INTO appointments(customer_name,phone,service_id,appointment_date,
                 appointment_time,payment_method,created_at) VALUES(%s,%s,%s,%s,%s,%s,%s)""",
-                (name, phone, service_id, day, time, payment_method,datetime.now().isoformat(timespec="minutes")))
+                (
+                    name,
+                    phone,
+                    service_id,
+                    day,
+                    time,
+                    payment_method,
+                    datetime.now().isoformat(timespec="minutes"),
+                ),
+            )
     except UniqueViolation:
         flash("Esse horário já foi reservado. Escolha outro.")
         return redirect(url_for("home"))
-    enviar_telegram(f"✂️ Novo agendamento JS Cortes\n\n👤 Nome: {name}\n📞 Telefone: {phone}\n💈 Serviço: {service['name']}\n💰 Valor: R$ {service['price']:.2f}\n📅 Data: {day}\n🕐 Hora: {time}\n💳 Pagamento: {payment_method}")
+    enviar_telegram(
+        f"✂️ Novo agendamento JS Cortes\n\n👤 Nome: {name}\n📞 Telefone: {phone}\n💈 Serviço: {service['name']}\n💰 Valor: R$ {service['price']:.2f}\n📅 Data: {day}\n🕐 Hora: {time}"
+    )
     return render_template("success.html", name=name, day=day, time=time)
 
 
@@ -199,9 +289,13 @@ def book():
 def login():
     if request.method == "POST":
         with db() as con:
-            user = con.execute("SELECT * FROM admins WHERE username=%s",
-                               (request.form.get("username", ""),)).fetchone()
-        if user and check_password_hash(user["password_hash"], request.form.get("password", "")):
+            user = con.execute(
+                "SELECT * FROM admins WHERE username=%s",
+                (request.form.get("username", ""),),
+            ).fetchone()
+        if user and check_password_hash(
+            user["password_hash"], request.form.get("password", "")
+        ):
             session.clear()
             session["admin_id"] = user["id"]
             return redirect(url_for("dashboard"))
@@ -227,8 +321,6 @@ def dashboard():
     query = """SELECT a.*, s.name AS service_name, s.price AS service_price
                FROM appointments a JOIN services s ON s.id=a.service_id WHERE 1=1"""
     params = []
-    if not status_filter:
-        query += " AND a.status NOT IN ('Concluído', 'Cancelado')"
     if month_filter and re.fullmatch(r"\d{4}-\d{2}", month_filter):
         query += " AND substring(a.appointment_date,1,7)=%s"
         params.append(month_filter)
@@ -242,16 +334,33 @@ def dashboard():
     with db() as con:
         services = con.execute("SELECT * FROM services ORDER BY name").fetchall()
         appointments = con.execute(query, params).fetchall()
+
         def total(start, end):
-            row = con.execute("""SELECT COALESCE(SUM(amount_paid),0) AS total FROM appointments
+            row = con.execute(
+                """SELECT COALESCE(SUM(amount_paid),0) AS total FROM appointments
                 WHERE status='Concluído' AND appointment_date BETWEEN %s AND %s""",
-                (start.isoformat(), end.isoformat())).fetchone()
+                (start.isoformat(), end.isoformat()),
+            ).fetchone()
             return row["total"]
-        day_total, week_total, month_total = total(today, today), total(week_start, today), total(month_start, today)
-    return render_template("admin.html", appointments=appointments, services=services,
-        day_total=day_total, week_total=week_total, month_total=month_total, today=today.isoformat(),
-        month_filter=month_filter, status_filter=status_filter, date_filter=date_filter,
-        whatsapp_url=phone_whatsapp)
+
+        day_total, week_total, month_total = (
+            total(today, today),
+            total(week_start, today),
+            total(month_start, today),
+        )
+    return render_template(
+        "admin.html",
+        appointments=appointments,
+        services=services,
+        day_total=day_total,
+        week_total=week_total,
+        month_total=month_total,
+        today=today.isoformat(),
+        month_filter=month_filter,
+        status_filter=status_filter,
+        date_filter=date_filter,
+        whatsapp_url=phone_whatsapp,
+    )
 
 
 @app.route("/admin/historico")
@@ -273,17 +382,20 @@ def history():
         query += " LIMIT 3"
     with db() as con:
         rows = con.execute(query, params).fetchall()
-    return render_template("history.html", appointments=rows, month_filter=month,
-                           show_all=show_all)
+    return render_template(
+        "history.html", appointments=rows, month_filter=month, show_all=show_all
+    )
 
 
 @app.route("/admin/historico/<int:appointment_id>/excluir", methods=["POST"])
 @admin_required
 def delete_history_item(appointment_id):
     with db() as con:
-        con.execute("""DELETE FROM appointments WHERE id=%s
+        con.execute(
+            """DELETE FROM appointments WHERE id=%s
             AND (status IN ('Concluído','Cancelado') OR appointment_date < %s)""",
-            (appointment_id, date.today().isoformat()))
+            (appointment_id, date.today().isoformat()),
+        )
     flash("Registro do histórico excluído, se ele estava no histórico.")
     return redirect(url_for("history", mes=request.form.get("mes", "")))
 
@@ -294,14 +406,18 @@ def delete_history_bulk():
     month = request.form.get("mes", "")
     with db() as con:
         if month and re.fullmatch(r"\d{4}-\d{2}", month):
-            con.execute("""DELETE FROM appointments WHERE substring(appointment_date,1,7)=%s
+            con.execute(
+                """DELETE FROM appointments WHERE substring(appointment_date,1,7)=%s
                 AND (status IN ('Concluído','Cancelado') OR appointment_date < %s)""",
-                (month, date.today().isoformat()))
+                (month, date.today().isoformat()),
+            )
             flash("Histórico do mês selecionado apagado.")
         else:
-            con.execute("""DELETE FROM appointments
+            con.execute(
+                """DELETE FROM appointments
                 WHERE status IN ('Concluído','Cancelado') OR appointment_date < %s""",
-                (date.today().isoformat(),))
+                (date.today().isoformat(),),
+            )
             flash("Todo o histórico foi apagado.")
     return redirect(url_for("history", mes=month))
 
@@ -311,7 +427,9 @@ def delete_history_bulk():
 def edit_appointment(appointment_id):
     try:
         with db() as con:
-            appointment = con.execute("SELECT * FROM appointments WHERE id=%s", (appointment_id,)).fetchone()
+            appointment = con.execute(
+                "SELECT * FROM appointments WHERE id=%s", (appointment_id,)
+            ).fetchone()
             if not appointment:
                 flash("Agendamento não encontrado.")
                 return redirect(url_for("dashboard"))
@@ -322,32 +440,55 @@ def edit_appointment(appointment_id):
                 service_id = request.form.get("service_id", "").strip()
                 day = request.form.get("appointment_date", "")
                 time = request.form.get("appointment_time", "")
-                if not name or not service_id or not valid_time(time) or not valid_date(day):
+                if (
+                    not name
+                    or not service_id
+                    or not valid_time(time)
+                    or not valid_date(day)
+                ):
                     flash("Confira o nome, serviço, data e horário.")
-                    return render_template("edit.html", a=appointment, services=services, today=date.today().isoformat())
+                    return render_template(
+                        "edit.html",
+                        a=appointment,
+                        services=services,
+                        today=date.today().isoformat(),
+                    )
                 if blocked(con, day, time):
                     flash("Esse dia ou horário está bloqueado no calendário.")
-                    return render_template("edit.html", a=appointment, services=services, today=date.today().isoformat())
-                con.execute("""UPDATE appointments SET customer_name=%s, phone=%s, service_id=%s,
+                    return render_template(
+                        "edit.html",
+                        a=appointment,
+                        services=services,
+                        today=date.today().isoformat(),
+                    )
+                con.execute(
+                    """UPDATE appointments SET customer_name=%s, phone=%s, service_id=%s,
                     appointment_date=%s, appointment_time=%s WHERE id=%s""",
-                    (name, phone, service_id, day, time, appointment_id))
+                    (name, phone, service_id, day, time, appointment_id),
+                )
                 flash("Agendamento editado com sucesso.")
                 return redirect(url_for("dashboard"))
     except UniqueViolation:
         flash("Esse horário já está ocupado. Escolha outro.")
         return redirect(url_for("edit_appointment", appointment_id=appointment_id))
-    return render_template("edit.html", a=appointment, services=services, today=date.today().isoformat())
+    return render_template(
+        "edit.html", a=appointment, services=services, today=date.today().isoformat()
+    )
 
 
 @app.route("/admin/agendamento/<int:appointment_id>/excluir", methods=["POST"])
 @admin_required
 def delete_appointment(appointment_id):
     with db() as con:
-        row = con.execute("SELECT status FROM appointments WHERE id=%s", (appointment_id,)).fetchone()
+        row = con.execute(
+            "SELECT status FROM appointments WHERE id=%s", (appointment_id,)
+        ).fetchone()
         if not row:
             flash("Agendamento não encontrado.")
         elif row["status"] == "Concluído":
-            flash("Este atendimento já foi concluído. Use o Histórico para apagar registros concluídos.")
+            flash(
+                "Este atendimento já foi concluído. Use o Histórico para apagar registros concluídos."
+            )
         else:
             con.execute("DELETE FROM appointments WHERE id=%s", (appointment_id,))
             flash("Agendamento excluído. O horário foi liberado.")
@@ -363,10 +504,16 @@ def replace_customer(appointment_id):
         flash("Informe o nome do novo cliente.")
         return redirect(url_for("dashboard"))
     with db() as con:
-        result = con.execute("""UPDATE appointments SET customer_name=%s, phone=%s
-            WHERE id=%s AND status='Agendado'""", (name, phone, appointment_id))
-        flash("Cliente substituído nesse horário." if result.rowcount else
-              "Não foi possível trocar o cliente. Confira se o agendamento ainda está ativo.")
+        result = con.execute(
+            """UPDATE appointments SET customer_name=%s, phone=%s
+            WHERE id=%s AND status='Agendado'""",
+            (name, phone, appointment_id),
+        )
+        flash(
+            "Cliente substituído nesse horário."
+            if result.rowcount
+            else "Não foi possível trocar o cliente. Confira se o agendamento ainda está ativo."
+        )
     return redirect(url_for("dashboard"))
 
 
@@ -386,13 +533,23 @@ def update_appointment(appointment_id):
         return redirect(url_for("dashboard"))
     with db() as con:
         if status == "Concluído" and amount == 0:
-            service = con.execute("""SELECT s.price FROM appointments a
-                JOIN services s ON s.id=a.service_id WHERE a.id=%s""", (appointment_id,)).fetchone()
+            service = con.execute(
+                """SELECT s.price FROM appointments a
+                JOIN services s ON s.id=a.service_id WHERE a.id=%s""",
+                (appointment_id,),
+            ).fetchone()
             if service:
                 amount = float(service["price"])
-        con.execute("""UPDATE appointments SET status=%s, amount_paid=%s, payment_method=%s
-            WHERE id=%s""", (status, amount if status == "Concluído" else 0,
-                              request.form.get("payment_method", "").strip(), appointment_id))
+        con.execute(
+            """UPDATE appointments SET status=%s, amount_paid=%s, payment_method=%s
+            WHERE id=%s""",
+            (
+                status,
+                amount if status == "Concluído" else 0,
+                request.form.get("payment_method", "").strip(),
+                appointment_id,
+            ),
+        )
     flash("Agendamento atualizado.")
     return redirect(url_for("dashboard"))
 
@@ -418,7 +575,9 @@ def add_service():
 @admin_required
 def edit_service(service_id):
     with db() as con:
-        service = con.execute("SELECT * FROM services WHERE id=%s", (service_id,)).fetchone()
+        service = con.execute(
+            "SELECT * FROM services WHERE id=%s", (service_id,)
+        ).fetchone()
         if not service:
             flash("Serviço não encontrado.")
             return redirect(url_for("dashboard"))
@@ -431,7 +590,10 @@ def edit_service(service_id):
             except ValueError:
                 flash("Confira o nome e o preço.")
                 return render_template("service_edit.html", service=service)
-            con.execute("UPDATE services SET name=%s, price=%s WHERE id=%s", (name, price, service_id))
+            con.execute(
+                "UPDATE services SET name=%s, price=%s WHERE id=%s",
+                (name, price, service_id),
+            )
             flash("Serviço atualizado.")
             return redirect(url_for("dashboard"))
     return render_template("service_edit.html", service=service)
@@ -459,9 +621,13 @@ def disable_service(service_id):
 @admin_required
 def delete_service(service_id):
     with db() as con:
-        linked = con.execute("SELECT id FROM appointments WHERE service_id=%s LIMIT 1", (service_id,)).fetchone()
+        linked = con.execute(
+            "SELECT id FROM appointments WHERE service_id=%s LIMIT 1", (service_id,)
+        ).fetchone()
         if linked:
-            flash("Esse serviço já possui agendamentos vinculados. Desative-o para manter o histórico.")
+            flash(
+                "Esse serviço já possui agendamentos vinculados. Desative-o para manter o histórico."
+            )
         else:
             con.execute("DELETE FROM services WHERE id=%s", (service_id,))
             flash("Serviço apagado.")
@@ -479,37 +645,37 @@ def calendar():
                 if not valid_time(slot):
                     flash("Informe um horário válido.")
                 else:
-                    con.execute("INSERT INTO schedule_slots(time) VALUES(%s) ON CONFLICT DO NOTHING", (slot,))
+                    con.execute(
+                        "INSERT INTO schedule_slots(time) VALUES(%s) ON CONFLICT DO NOTHING",
+                        (slot,),
+                    )
                     flash("Horário adicionado à agenda.")
             elif action == "remove_slot":
                 slot = request.form.get("time", "")
                 con.execute("DELETE FROM schedule_slots WHERE time=%s", (slot,))
-                flash("Horário removido da lista de horários disponíveis. Agendamentos existentes são preservados.")
-            elif action == "toggle_slot":
-              slot = request.form.get("slot")
-              if not valid_time(slot):
-                flash("Horário inválido.", "danger")
-        else:
-            con.execute("CREATE TABLE IF NOT EXISTS disabled_slots (slot TEXT PRIMARY KEY)")
-            exists = con.execute("SELECT 1 FROM disabled_slots WHERE slot = ?", (slot,)).fetchone()
-           if exists:
-                con.execute("DELETE FROM disabled_slots WHERE slot = ?", (slot,))
-                flash(f"Horário {slot} ativado!", "success")
-           else:
-                con.execute("INSERT OR IGNORE INTO disabled_slots (slot) VALUES (?)", (slot,))
-                flash(f"Horário {slot} desativado!", "success")
-    elif action == "toggle_weekday":
+                flash(
+                    "Horário removido da lista de horários disponíveis. Agendamentos existentes são preservados."
+                )
+            elif action == "toggle_weekday":
                 try:
                     weekday = int(request.form.get("weekday", "-1"))
                     if weekday not in range(7):
                         raise ValueError()
-                    exists = con.execute("SELECT weekday FROM recurring_day_blocks WHERE weekday=%s",
-                                         (weekday,)).fetchone()
+                    exists = con.execute(
+                        "SELECT weekday FROM recurring_day_blocks WHERE weekday=%s",
+                        (weekday,),
+                    ).fetchone()
                     if exists:
-                        con.execute("DELETE FROM recurring_day_blocks WHERE weekday=%s", (weekday,))
+                        con.execute(
+                            "DELETE FROM recurring_day_blocks WHERE weekday=%s",
+                            (weekday,),
+                        )
                         flash(f"{WEEKDAYS[weekday]} desbloqueada permanentemente.")
                     else:
-                        con.execute("INSERT INTO recurring_day_blocks(weekday) VALUES(%s)", (weekday,))
+                        con.execute(
+                            "INSERT INTO recurring_day_blocks(weekday) VALUES(%s)",
+                            (weekday,),
+                        )
                         flash(f"{WEEKDAYS[weekday]} bloqueada permanentemente.")
                 except ValueError:
                     flash("Dia da semana inválido.")
@@ -524,7 +690,9 @@ def calendar():
                     flash("Horário inválido.")
                 else:
                     start = date.fromisoformat(start_value)
-                    selected = {int(x) for x in weekdays if x.isdigit() and int(x) in range(7)}
+                    selected = {
+                        int(x) for x in weekdays if x.isdigit() and int(x) in range(7)
+                    }
                     if not selected:
                         flash("Selecione pelo menos um dia da semana.")
                     else:
@@ -533,32 +701,53 @@ def calendar():
                             for offset in range(7):
                                 target = start + timedelta(days=week * 7 + offset)
                                 if target.weekday() in selected:
-                                    con.execute("""INSERT INTO date_blocks(block_date,block_time)
+                                    con.execute(
+                                        """INSERT INTO date_blocks(block_date,block_time)
                                         VALUES(%s,%s) ON CONFLICT DO NOTHING""",
-                                        (target.isoformat(), block_time))
+                                        (target.isoformat(), block_time),
+                                    )
                                     count += 1
                         label = f"horário {block_time}" if block_time else "dia inteiro"
-                        flash(f"Bloqueio aplicado para {label} em {count} ocorrência(s).")
+                        flash(
+                            f"Bloqueio aplicado para {label} em {count} ocorrência(s)."
+                        )
             elif action == "block_date":
                 day = request.form.get("block_date", "")
                 if not valid_date(day):
                     flash("Escolha uma data válida.")
                 else:
-                    con.execute("INSERT INTO date_blocks(block_date,block_time) VALUES(%s,'') ON CONFLICT DO NOTHING",
-                                (day,))
+                    con.execute(
+                        "INSERT INTO date_blocks(block_date,block_time) VALUES(%s,'') ON CONFLICT DO NOTHING",
+                        (day,),
+                    )
                     flash("Dia bloqueado.")
             elif action == "unblock_date":
-                con.execute("DELETE FROM date_blocks WHERE block_date=%s AND block_time=%s",
-                            (request.form.get("block_date", ""), request.form.get("block_time", "")))
+                con.execute(
+                    "DELETE FROM date_blocks WHERE block_date=%s AND block_time=%s",
+                    (
+                        request.form.get("block_date", ""),
+                        request.form.get("block_time", ""),
+                    ),
+                )
                 flash("Bloqueio específico removido.")
         return redirect(url_for("calendar"))
     with db() as con:
         slots = con.execute("SELECT time FROM schedule_slots ORDER BY time").fetchall()
-        recurring = con.execute("SELECT weekday FROM recurring_day_blocks ORDER BY weekday").fetchall()
-        blocks = con.execute("SELECT block_date, block_time FROM date_blocks ORDER BY block_date, block_time LIMIT 200").fetchall()
+        recurring = con.execute(
+            "SELECT weekday FROM recurring_day_blocks ORDER BY weekday"
+        ).fetchall()
+        blocks = con.execute(
+            "SELECT block_date, block_time FROM date_blocks ORDER BY block_date, block_time LIMIT 200"
+        ).fetchall()
     blocked_weekdays = {r["weekday"] for r in recurring}
-    return render_template("calendar.html", slots=slots, weekdays=WEEKDAYS,
-                           blocked_weekdays=blocked_weekdays, blocks=blocks, today=date.today().isoformat())
+    return render_template(
+        "calendar.html",
+        slots=slots,
+        weekdays=WEEKDAYS,
+        blocked_weekdays=blocked_weekdays,
+        blocks=blocks,
+        today=date.today().isoformat(),
+    )
 
 
 @app.route("/admin/senha", methods=["POST"])
@@ -567,14 +756,18 @@ def change_password():
     current = request.form.get("current_password", "")
     new = request.form.get("new_password", "")
     with db() as con:
-        user = con.execute("SELECT * FROM admins WHERE id=%s", (session["admin_id"],)).fetchone()
+        user = con.execute(
+            "SELECT * FROM admins WHERE id=%s", (session["admin_id"],)
+        ).fetchone()
         if not user or not check_password_hash(user["password_hash"], current):
             flash("Senha atual incorreta.")
         elif len(new) < 10:
             flash("A nova senha deve ter pelo menos 10 caracteres.")
         else:
-            con.execute("UPDATE admins SET password_hash=%s WHERE id=%s",
-                        (generate_password_hash(new), session["admin_id"]))
+            con.execute(
+                "UPDATE admins SET password_hash=%s WHERE id=%s",
+                (generate_password_hash(new), session["admin_id"]),
+            )
             flash("Senha alterada com sucesso.")
     return redirect(url_for("dashboard"))
 
