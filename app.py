@@ -281,7 +281,7 @@ def book():
         flash("Esse horário já foi reservado. Escolha outro.")
         return redirect(url_for("home"))
     enviar_telegram(
-        f"✂️ Novo agendamento JS Cortes\n\n👤 Nome: {name}\n📞 Telefone: {phone}\n💈 Serviço: {service['name']}\n💰 Valor: R$ {service['price']:.2f}\n📅 Data: {day}\n🕐 Hora: {time}"
+        f"✂️ Novo agendamento JS Cortes\n\n👤 Nome: {name}\n📞 Telefone: {phone}\n💈 Serviço: {service['name']}\n💰 Valor: R$ {service['price']:.2f}\n📅 Data: {day}\n🕐 Hora: {time}"\n💳 Pagamento: {payment_method}
     )
     return render_template("success.html", name=name, day=day, time=time)
 
@@ -327,7 +327,7 @@ def dashboard():
         params.append(month_filter)
     if status_filter in ["Agendado", "Concluído", "Cancelado"]:
         query += " AND a.status = ?"
-        params.append(status_filter)
+    params.append(status_filter)
     else:
         query += " AND a.status = 'Agendado'"
     if valid_date(date_filter, allow_past=True):
