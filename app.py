@@ -492,7 +492,7 @@ def calendar():
                 else:
                  con.execute("CREATE TABLE IF NOT EXISTS disabled_slots(time TEXT PRIMARY KEY)", ())
             exists = con.execute("SELECT time FROM disabled_slots WHERE time=%s", (slot,)).fetchone()
-             if exists:
+            if exists:
                 con.execute("DELETE FROM disabled_slots WHERE time=%s", (slot,))
                 con.execute("INSERT INTO schedule_slots(time) VALUES(%s) ON CONFLICT DO NOTHING", (slot,))
                 flash("Horário ativado novamente.")
