@@ -488,7 +488,7 @@ def calendar():
             elif action == "toggle_slot":
               slot = request.form.get("slot")
               if not valid_time(slot):
-            flash("Horário inválido.", "danger")
+                flash("Horário inválido.", "danger")
         else:
             con.execute("CREATE TABLE IF NOT EXISTS disabled_slots (slot TEXT PRIMARY KEY)")
             exists = con.execute("SELECT 1 FROM disabled_slots WHERE slot = ?", (slot,)).fetchone()
