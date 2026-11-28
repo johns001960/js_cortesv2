@@ -216,7 +216,7 @@ def available_times():
         slots = [
             r["time"]
             for r in con.execute(
-                "SELECT time FROM schedule_slots ORDER BY time"
+                "SELECT time FROM schedule_slots WHERE COALESCE(active, TRUE) = TRUE ORDER BY time"
             ).fetchall()
         ]
     occupied = {r["appointment_time"] for r in booked}
@@ -650,12 +650,17 @@ def calendar():
                         (slot,),
                     )
                     flash("Horário adicionado à agenda.")
-            elif action == "remove_slot":
-                slot = request.form.get("time", "")
-                con.execute("DELETE FROM schedule_slots WHERE time=%s", (slot,))
-                flash(
-                    "Horário removido da lista de horários disponíveis. Agendamentos existentes são preservados."
-                )
+                elif action == "toggle_slot":
+        slot = request.form.get("time", "")
+        con.execute("ALTER TABLE schedule_slots ADD COLUMN IF NOT EXISTS active BOOLEAN DEFAULT TRUE")
+        con.execute("UPDATE schedule_slots SET active = NOT COALESCE(active, TRUE) WHERE time=%s", (slot,))
+        flash("Horário atualizado!", "ok")
+    elif action == "remove_slot":
+        slot = request.form.get("time", "")
+        con.execute("DELETE FROM schedule_slots WHERE time=%s", (slot,))
+        flash(
+            "Horário removido da lista de horários disponíveis. Agendamentos existentes são preservados."
+        )
             elif action == "toggle_weekday":
                 try:
                     weekday = int(request.form.get("weekday", "-1"))
@@ -732,7 +737,7 @@ def calendar():
                 flash("Bloqueio específico removido.")
         return redirect(url_for("calendar"))
     with db() as con:
-        slots = con.execute("SELECT time FROM schedule_slots ORDER BY time").fetchall()
+        slots = con.execute("SELECT time, COALESCE(active, TRUE) AS active FROM schedule_slots ORDER BY time").fetchall()
         recurring = con.execute(
             "SELECT weekday FROM recurring_day_blocks ORDER BY weekday"
         ).fetchall()
