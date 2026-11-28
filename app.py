@@ -92,6 +92,7 @@ def init_db():
            ON appointments(appointment_date, appointment_time) WHERE status != 'Cancelado'""",
         """CREATE TABLE IF NOT EXISTS schedule_slots (
             time TEXT PRIMARY KEY)""",
+            """ALTER TABLE schedule_slots ADD COLUMN IF NOT EXISTS active BOOLEAN NOT NULL DEFAULT TRUE""",
         """CREATE TABLE IF NOT EXISTS recurring_day_blocks (
             weekday INTEGER PRIMARY KEY CHECK (weekday BETWEEN 0 AND 6))""",
         """CREATE TABLE IF NOT EXISTS date_blocks (
@@ -652,7 +653,7 @@ def calendar():
                     flash("Horário adicionado à agenda.")
             elif action == "toggle_slot":
                 slot = request.form.get("time", "")
-                con.execute("UPDATE slots SET available = NOT available WHERE date=? AND time=?", (date, slot))
+                con.execute("UPDATE schedule_slots SET active = NOT COALESCE(active, TRUE) WHERE time = %s", (slot,))
                 con.commit()
                 flash(f"Horário {slot} atualizado!")
         
