@@ -490,7 +490,7 @@ def calendar():
                 if not valid_time(slot):
                     flash("Informe um horário válido.")
                 else:
-            con.execute("CREATE TABLE IF NOT EXISTS disabled_slots(time TEXT PRIMARY KEY)", ())
+                 con.execute("CREATE TABLE IF NOT EXISTS disabled_slots(time TEXT PRIMARY KEY)", ())
             exists = con.execute("SELECT time FROM disabled_slots WHERE time=%s", (slot,)).fetchone()
             if exists:
                 con.execute("DELETE FROM disabled_slots WHERE time=%s", (slot,))
