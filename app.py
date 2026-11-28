@@ -485,6 +485,21 @@ def calendar():
                 slot = request.form.get("time", "")
                 con.execute("DELETE FROM schedule_slots WHERE time=%s", (slot,))
                 flash("Horário removido da lista de horários disponíveis. Agendamentos existentes são preservados.")
+            elif action == "toggle_slot":
+                slot = request.form.get("time", "")
+                if not valid_time(slot):
+                    flash("Informe um horário válido.")
+                else:
+            con.execute("CREATE TABLE IF NOT EXISTS disabled_slots(time TEXT PRIMARY KEY)", ())
+            exists = con.execute("SELECT time FROM disabled_slots WHERE time=%s", (slot,)).fetchone()
+            if exists:
+                con.execute("DELETE FROM disabled_slots WHERE time=%s", (slot,))
+                con.execute("INSERT INTO schedule_slots(time) VALUES(%s) ON CONFLICT DO NOTHING", (slot,))
+                flash("Horário ativado novamente.")
+            else:
+                con.execute("DELETE FROM schedule_slots WHERE time=%s", (slot,))
+                con.execute("INSERT INTO disabled_slots(time) VALUES(%s) ON CONFLICT DO NOTHING", (slot,))
+                flash("Horário desativado. Ele sumiu da agenda.")
             elif action == "toggle_weekday":
                 try:
                     weekday = int(request.form.get("weekday", "-1"))
