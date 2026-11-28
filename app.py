@@ -327,7 +327,7 @@ def dashboard():
         params.append(month_filter)
     if status_filter in ["Agendado", "Concluído", "Cancelado"]:
         query += " AND a.status = ?"
-    params.append(status_filter)
+        params.append(status_filter)
     else:
         query += " AND a.status = 'Agendado'"
     if valid_date(date_filter, allow_past=True):
