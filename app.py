@@ -281,8 +281,8 @@ def book():
         flash("Esse horário já foi reservado. Escolha outro.")
         return redirect(url_for("home"))
     enviar_telegram(
-        f"✂️ Novo agendamento JS Cortes\n\n👤 Nome: {name}\n📞 Telefone: {phone}\n💈 Serviço: {service['name']}\n💰 Valor: R$ {service['price']:.2f}\n📅 Data: {day}\n🕐 Hora: {time}"\n💳 Pagamento: {payment_method}
-    )
+    f"✂️ Novo agendamento JS Cortes\n\n👤 Nome: {name}\n📞 Telefone: {phone}\n💈 Serviço: {service['name']}\n💰 Valor: R$ {service['price']:.2f}\n📅 Data: {day}\n🕐 Hora: {time}\n💳 Pagamento: {payment_method}"
+)
     return render_template("success.html", name=name, day=day, time=time)
 
 
